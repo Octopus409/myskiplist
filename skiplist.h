@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <fstream>
 #include <vector>
+#include "bloom_fliter.h"
 
 template<typename T>
 class myless{
@@ -121,6 +122,9 @@ private:
     // 展示函数的辅助函数
     void display_the_header();
 
+    // 布隆过滤器，只插入，不删除
+    Bloom_Filter<K> BF;
+
     //最大级
     int _max_level;
 
@@ -170,7 +174,7 @@ bool Skiplist<K,V,CMP>::insert(K key,V value){
 
     // current非空，且current->get_key()!=key的情况下。
     if(current!=nullptr && (!cmp_func(current->get_key(),key) && !cmp_func(key,current->get_key()))){
-        // std::cout <<  key << " already exist." <<  std::endl;
+        std::cout <<  key << " already exist." <<  std::endl;
         return false;
     }
 
@@ -193,12 +197,15 @@ bool Skiplist<K,V,CMP>::insert(K key,V value){
             newnode->forward[i] = update[i]->forward[i];
             update[i]->forward[i] = newnode;
         }
-        // std::cout << "Succesfully insert key: " << key << " value: "<< value <<  std::endl;
+        std::cout << "Succesfully insert key: " << key << " value: "<< value <<  std::endl;
         _ele_num++;
 
         // 判断是否需要对高度扩容
         
     }
+
+    // 添加至布隆过滤器
+    BF._Set(key);
 
     // 扩容
     
@@ -221,6 +228,12 @@ bool Skiplist<K,V,CMP>::insert(K key,V value){
 // 删除元素 log(n)
 template<typename K,typename V,typename CMP>
 bool Skiplist<K,V,CMP>::erase(K key){
+
+    // 布隆过滤一次
+    if(!BF._IsIn(key)){
+        std::cout << "BF : Ele Key=" << key << "doesn't exist" << std::endl;
+        return false;
+    }
 
     Node<K,V>* update[_max_level+1];
     memset(update, 0, sizeof(Node<K, V>*)*(_max_level+1));
@@ -261,6 +274,8 @@ bool Skiplist<K,V,CMP>::erase(K key){
 // 范围删除 log(n) + n
 template<typename K,typename V,typename CMP>
 bool Skiplist<K,V,CMP>::erase(K begin, K end){
+
+    
 
     Node<K,V>* update[_max_level+1];
     memset(update, 0, sizeof(Node<K, V>*)*(_max_level+1));
@@ -372,11 +387,23 @@ Node<K,V>* Skiplist<K,V,CMP>::_find(K key){
 template<typename K,typename V,typename CMP>
 Node<K,V>* Skiplist<K,V,CMP>::find(K key){
 
+    // 布隆过滤一次
+    if(!BF._IsIn(key)){
+        std::cout << "BF : Ele Key=" << key << "doesn't exist" << std::endl;
+        return nullptr;
+    }
+
     Node<K,V>* ret = _find(key);
     if(ret==nullptr || cmp_func(ret->get_key(),key) || cmp_func(key,ret->get_key())) 
-    std::cout << "Couldn't found the element Key=" << key << std::endl;
+    {
+        std::cout << "Couldn't found the element Key=" << key << std::endl;
+        return nullptr;
+    }
     else 
-    std::cout << "Found the element Key=" << ret->get_key() << " ,value = "<< ret->get_value() << std::endl;
+    {
+        std::cout << "Found the element Key=" << ret->get_key() << " ,value = "<< ret->get_value() << std::endl;
+        return ret;
+    }
 
 }
 
